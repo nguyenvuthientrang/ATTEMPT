@@ -49,6 +49,7 @@ from .configuration_t5 import T5Config
 from adapters import AdapterController
 from typing import Dict, Any
 
+from ot.sliced import sliced_wasserstein_distance
 
 logger = logging.get_logger(__name__)
 
@@ -1069,7 +1070,11 @@ class T5Stack(T5PreTrainedModel):
                 input_shape = inputs_embeds.size()[:-1]
 
             if self.append_attn_prefix:
+                # print("=============================================")
+                # print("Input emb shape:", inputs_embeds.shape)
                 avg_inputs_embeds, _ = torch.max(inputs_embeds, 1)
+                # print("Input max pooled shape:", avg_inputs_embeds.shape)
+                # print("=============================================")
                 if self.ignore_target is False:
                     if task_ids is not None:
                         target_prompts = torch.index_select(
@@ -1088,7 +1093,11 @@ class T5Stack(T5PreTrainedModel):
                     mul_prefix_emb_added = self.mul_prefix_emb.repeat(
                         inputs_embeds.shape[0], 1, 1, 1)
                     avg_mul_prefix_emb, _ = torch.max(mul_prefix_emb_added, 2)
-
+                # print("=============================================")
+                # print("Prefix emb shape:", self.mul_prefix_emb.shape)
+                # print("Mul prefix shape:", mul_prefix_emb_added.shape)
+                # print("Prefix max pooled shape:", avg_mul_prefix_emb.shape)
+                # print("=============================================")
                 if self.append_attn_prefix:
                     # 1. dot product
                     if self.attn_method == "dot":
@@ -1129,6 +1138,10 @@ class T5Stack(T5PreTrainedModel):
                             0), mul_prefix_emb_added.size(1)) / mul_prefix_emb_added.size(1)).cuda()
                     else:
                         raise NotImplementedError
+                    attn_scores = torch.stack([torch.stack([sliced_wasserstein_distance(x_i, mul_prefix_emb_added[0,j], seed=0, n_projections=1000) for j in range(mul_prefix_emb_added.shape[1])], dim=0) for i, x_i in enumerate(torch.unbind(inputs_embeds, dim=0), 0)], dim=0)
+                    # print("=============================================")
+                    # print("Attn score:", attn_scores.shape)
+                    # print("=============================================")
 
                     if self.attn_method == "sub" or self.attn_method == "constant":
                         normalized_attn_scores = F.softmax(attn_scores, -1)

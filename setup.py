@@ -14,7 +14,7 @@ def setup_package():
         packages=setuptools.find_packages(
             exclude=['docs', 'tests', 'scripts', 'examples']),
         install_requires=[
-            'datasets==1.6.2',
+            #'datasets==1.6.2',
             'scikit-learn==0.24.2',
             'tensorboard==2.5.0',
             'matplotlib==3.4.2',
