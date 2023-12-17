@@ -104,7 +104,7 @@ class AbstractTask(abc.ABC):
                 dataset = self.load_dataset(split=mapped_split, lang_code=lang)
             if file_name is not None:
                 dataset = datasets.load_dataset(
-                    'csv', data_files={split:file_name})[split]
+                    'parquet', data_files={split:file_name})[split]
             else:
                 dataset = self.load_dataset(split=mapped_split)
             indices = self.get_split_indices(
@@ -119,7 +119,7 @@ class AbstractTask(abc.ABC):
                 dataset = self.load_dataset(split="train", lang_code=lang)
             if file_name is not None:
                 dataset = datasets.load_dataset(
-                    'csv', data_files={split:file_name})[split]
+                    'parquet', data_files={split:file_name})[split]
             else:
                 dataset = self.load_dataset(split="train")
             indices = self.get_split_indices(
@@ -132,7 +132,7 @@ class AbstractTask(abc.ABC):
 
             if file_name is not None:
                 dataset = datasets.load_dataset(
-                    'csv', data_files={split:file_name})[split]
+                    'parquet', data_files={split:file_name})[split]
             else:
                 dataset = self.load_dataset(split=mapped_split)
             # shuffles the data and samples it.

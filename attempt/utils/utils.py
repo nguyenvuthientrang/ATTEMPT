@@ -113,7 +113,7 @@ def freeze_model_params(model, adapter_args, adapter_config):
                     if "prefix_shared" == n and adapter_config.ignore_target is False:
                         m.requires_grad = True
 
-            elif adapter_config.attn_method == "sub":
+            elif adapter_config.attn_method == "sub" or adapter_config.attn_method == "sw":
                 for n, m in model.named_parameters():
                     if "encoder.attn_W_down.weight" == n and adapter_config.fix_attention is False:
                         m.requires_grad = True

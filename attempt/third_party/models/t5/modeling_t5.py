@@ -49,6 +49,8 @@ from .configuration_t5 import T5Config
 from adapters import AdapterController
 from typing import Dict, Any
 
+from ot.sliced import sliced_wasserstein_distance
+from wasserstein import SinkhornDistance
 
 logger = logging.get_logger(__name__)
 
@@ -929,7 +931,7 @@ class T5Stack(T5PreTrainedModel):
                 self.attn_Wa = nn.Linear(
                     self.model_dim, self.model_dim, bias=False)
                 self.layer_norm = nn.LayerNorm(self.model_dim)
-            if self.attn_method == "sub":
+            if self.attn_method == "sub" or self.attn_method == "sw":
                 self.attn_W_down = nn.Linear(self.model_dim, 100, bias=False)
                 self.attn_W_up = nn.Linear(100, self.model_dim, bias=False)
                 self.attn_non_linear = nn.SiLU()
@@ -1068,6 +1070,9 @@ class T5Stack(T5PreTrainedModel):
                     inputs_embeds.shape[0], 1, 1), inputs_embeds], dim=1)  # bsz, seqlen, dim
                 input_shape = inputs_embeds.size()[:-1]
 
+            # print("======================================")
+            # print("Inputs_embeds shape:", inputs_embeds.shape)
+            # print("======================================")
             if self.append_attn_prefix:
                 avg_inputs_embeds, _ = torch.max(inputs_embeds, 1)
                 if self.ignore_target is False:
@@ -1088,15 +1093,27 @@ class T5Stack(T5PreTrainedModel):
                     mul_prefix_emb_added = self.mul_prefix_emb.repeat(
                         inputs_embeds.shape[0], 1, 1, 1)
                     avg_mul_prefix_emb, _ = torch.max(mul_prefix_emb_added, 2)
-
+                # print("======================================")
+                # print("prefix emb shape:", self.prefix_emb.shape)
+                # print("mul_prefix_emb shape:", self.mul_prefix_emb.shape)
+                # print("target_prompts shape:", target_prompts.shape)
+                # print("mul_prefix_emb_added shape:", mul_prefix_emb_added.shape)
+                # print("avg_mul_prefix_emb shape:", avg_mul_prefix_emb.shape)
+                # print("======================================")
                 if self.append_attn_prefix:
                     # 1. dot product
                     if self.attn_method == "dot":
+                        # print("======================================")
+                        # print("Using dot")
+                        # print("======================================")
                         avg_inputs_embeds = avg_inputs_embeds.unsqueeze(-1)
                         attn_scores = avg_mul_prefix_emb.bmm(
                             avg_inputs_embeds).squeeze(-1)
 
                     elif self.attn_method == "linear":
+                        # print("======================================")
+                        # print("Using linear")
+                        # print("======================================")
                         # 2. linear
                         x = self.attn_Wa(avg_inputs_embeds)
                         x = self.layer_norm(x)
@@ -1105,13 +1122,31 @@ class T5Stack(T5PreTrainedModel):
                             x).squeeze(-1) / self.temperature
 
                     elif self.attn_method == "sub":
+                        # print("======================================")
+                        # print("Using sub")
+                        # print("======================================")
+                        # print(self.attn_W_down)
+                        # print(self.attn_non_linear)
+                        # print(self.attn_W_up)
+                        # print(self.layer_norm)
+                        # print("======================================")
                         x = self.attn_W_down(avg_inputs_embeds)
+                        # print("x shape:", x.shape)
                         x = self.attn_non_linear(x)
+                        # print("x shape:", x.shape)
                         x = self.attn_W_up(x)
+                        # print("x shape:", x.shape)
                         x = self.layer_norm(x)
+                        # print("x shape:", x.shape)
                         x = x.unsqueeze(-1)
+                        # print("x shape:", x.shape)
+                        # print("======================================")
                         attn_scores = avg_mul_prefix_emb.bmm(
                             x).squeeze(-1) / self.temperature
+                        # print("x:", x.shape)
+                        # print("avg_mul_prefix_emb:", avg_mul_prefix_emb.shape)
+                        # print("attn score shape:", attn_scores.shape)
+                        # print("======================================")
 
                     # implement token level model
                     elif self.attn_method == "token":
@@ -1122,6 +1157,19 @@ class T5Stack(T5PreTrainedModel):
                         x = x.unsqueeze(-1)
                         attn_scores = torch.einsum(
                             "bpld,bdk->bplk", mul_prefix_emb_added, x) / self.temperature
+                        
+                    elif self.attn_method == "sw":
+                        # print("==============================================")
+                        # print("sw")
+                        # print("==============================================")
+                        x = self.attn_W_down(inputs_embeds)
+                        x = self.attn_non_linear(x)
+                        x = self.attn_W_up(x)
+                        x = self.layer_norm(x)
+                        prefix_emb_added = torch.cat((self.mul_prefix_emb, self.prefix_emb.unsqueeze(0)), dim=0)
+                        attn_scores = torch.stack([torch.stack([sliced_wasserstein_distance(x_i, prefix_emb_added[j], seed=0, n_projections=1000) \
+                                        for j in range(prefix_emb_added.shape[0])], dim=0) \
+                           for i, x_i in enumerate(torch.unbind(x, dim=0), 0)], dim=0)
 
                     elif self.attn_method == "constant":
                         # FIXME: more efficient implementation
@@ -1130,7 +1178,7 @@ class T5Stack(T5PreTrainedModel):
                     else:
                         raise NotImplementedError
 
-                    if self.attn_method == "sub" or self.attn_method == "constant":
+                    if self.attn_method == "sub" or self.attn_method == "constant" or self.attn_method == "sw":
                         normalized_attn_scores = F.softmax(attn_scores, -1)
                         soft_prompts = torch.einsum(
                             'bp, bpld -> bld', normalized_attn_scores, mul_prefix_emb_added)
