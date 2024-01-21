@@ -394,7 +394,7 @@ def main():
     print(results)
 
     # eval final model
-    attention_paths = [os.path.join(training_args.output_dir, "attn_W_down.pt"), os.path.join(training_args.output_dir, "attn_W_up.pt")]
+    attention_paths = [os.path.join(training_args.output_dir, "attn_W_down.pt"), os.path.join(training_args.output_dir, "attn_W_up.pt"), os.path.join(training_args.output_dir, "fc.pt")]
     trainer.model.update_attention_weights_sub(attention_paths)
 
     dev_metrics_all = {}

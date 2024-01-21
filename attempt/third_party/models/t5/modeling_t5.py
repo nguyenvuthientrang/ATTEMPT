@@ -50,7 +50,7 @@ from adapters import AdapterController
 from typing import Dict, Any
 
 from ot.sliced import sliced_wasserstein_distance
-from wasserstein import SinkhornDistance
+from wasserstein import SinkhornDistance, ISEBSW
 
 logger = logging.get_logger(__name__)
 
@@ -931,11 +931,107 @@ class T5Stack(T5PreTrainedModel):
                 self.attn_Wa = nn.Linear(
                     self.model_dim, self.model_dim, bias=False)
                 self.layer_norm = nn.LayerNorm(self.model_dim)
-            if self.attn_method == "sub" or self.attn_method == "sw":
+            if self.attn_method == "sub" or self.attn_method == "sw" or self.attn_method == "ebsw":
+                #0 - original
+                num_heads = 8
                 self.attn_W_down = nn.Linear(self.model_dim, 100, bias=False)
                 self.attn_W_up = nn.Linear(100, self.model_dim, bias=False)
+                self.fc = nn.Linear(model_dim, model_dim, bias=False)
                 self.attn_non_linear = nn.SiLU()
                 self.layer_norm = nn.LayerNorm(self.model_dim)
+
+                # #1 - add fc after layer norm
+                # num_heads = 8
+                # self.attn_W_down = nn.Linear(self.model_dim, 100*num_heads, bias=False)
+                # self.attn_W_up = nn.Linear(100*num_heads, self.model_dim*num_heads, bias=False)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim*num_heads)
+
+                # #2 - add fc befor layer norm
+                # num_heads = 8
+                # self.attn_W_down = nn.Linear(self.model_dim, 100*num_heads, bias=False)
+                # self.attn_W_up = nn.Linear(100*num_heads, self.model_dim*num_heads, bias=False)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+
+                # #3 - dropout 0.1 - 1
+                # num_heads = 8
+                # self.attn_W_down = nn.Linear(self.model_dim, 100*num_heads, bias=False)
+                # self.attn_W_up = nn.Linear(100*num_heads, self.model_dim*num_heads, bias=False)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim*num_heads)
+                # self.dropout = nn.Dropout(0.1)
+
+                # #4 - dropout 0.1 - 1
+                # num_heads = 8
+                # self.attn_W_down = nn.Linear(self.model_dim, 100*num_heads, bias=False)
+                # self.attn_W_up = nn.Linear(100*num_heads, self.model_dim*num_heads, bias=False)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+                # self.dropout = nn.Dropout(0.1)
+
+                # #1.1 - seperate
+                # num_heads = 8
+                # self.attn_W_down = nn.Conv1d(model_dim, 100*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(100*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim*num_heads)
+
+                # #2.1 - add fc befor layer norm
+                # num_heads = 8
+                # self.attn_W_down = nn.Conv1d(model_dim, 100*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(100*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+
+                # #3 - dropout 0.1 - 1
+                # num_heads = 8
+                # self.attn_W_down = nn.Conv1d(model_dim, 100*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(100*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim*num_heads)
+                # self.dropout = nn.Dropout(0.1)
+
+                # #4 - dropout 0.1 - 1
+                # num_heads = 8
+                # self.attn_W_down = nn.Conv1d(model_dim, 100*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(100*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+                # self.dropout = nn.Dropout(0.1)
+
+                # #2.2 - num_heads = 4
+                # num_heads = 4
+                # self.attn_W_down = nn.Conv1d(model_dim, 100*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(100*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+
+                # #2.3 - num_heads = 4
+                # num_heads = 4
+                # self.attn_W_down = nn.Conv1d(model_dim, 25*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(25*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+
+                # #2.3 - num_heads = 4
+                # num_heads = 8
+                # self.attn_W_down = nn.Conv1d(model_dim, 12*num_heads, kernel_size=1, bias=False)
+                # self.attn_W_up = nn.Conv1d(12*num_heads, model_dim*num_heads, kernel_size=1, bias=False, groups=num_heads)
+                # self.fc = nn.Linear(model_dim*num_heads, model_dim, bias=False)
+                # self.attn_non_linear = nn.SiLU()
+                # self.layer_norm = nn.LayerNorm(self.model_dim)
+
         #######################################
         self.adapter_config = adapter_config
         self.block = nn.ModuleList(
@@ -1093,27 +1189,15 @@ class T5Stack(T5PreTrainedModel):
                     mul_prefix_emb_added = self.mul_prefix_emb.repeat(
                         inputs_embeds.shape[0], 1, 1, 1)
                     avg_mul_prefix_emb, _ = torch.max(mul_prefix_emb_added, 2)
-                # print("======================================")
-                # print("prefix emb shape:", self.prefix_emb.shape)
-                # print("mul_prefix_emb shape:", self.mul_prefix_emb.shape)
-                # print("target_prompts shape:", target_prompts.shape)
-                # print("mul_prefix_emb_added shape:", mul_prefix_emb_added.shape)
-                # print("avg_mul_prefix_emb shape:", avg_mul_prefix_emb.shape)
-                # print("======================================")
+
                 if self.append_attn_prefix:
                     # 1. dot product
                     if self.attn_method == "dot":
-                        # print("======================================")
-                        # print("Using dot")
-                        # print("======================================")
                         avg_inputs_embeds = avg_inputs_embeds.unsqueeze(-1)
                         attn_scores = avg_mul_prefix_emb.bmm(
                             avg_inputs_embeds).squeeze(-1)
 
                     elif self.attn_method == "linear":
-                        # print("======================================")
-                        # print("Using linear")
-                        # print("======================================")
                         # 2. linear
                         x = self.attn_Wa(avg_inputs_embeds)
                         x = self.layer_norm(x)
@@ -1122,32 +1206,107 @@ class T5Stack(T5PreTrainedModel):
                             x).squeeze(-1) / self.temperature
 
                     elif self.attn_method == "sub":
-                        # print("======================================")
-                        # print("Using sub")
-                        # print("======================================")
-                        # print(self.attn_W_down)
-                        # print(self.attn_non_linear)
-                        # print(self.attn_W_up)
-                        # print(self.layer_norm)
-                        # print("======================================")
+                        # 0
                         x = self.attn_W_down(avg_inputs_embeds)
-                        # print("x shape:", x.shape)
                         x = self.attn_non_linear(x)
-                        # print("x shape:", x.shape)
                         x = self.attn_W_up(x)
-                        # print("x shape:", x.shape)
                         x = self.layer_norm(x)
-                        # print("x shape:", x.shape)
                         x = x.unsqueeze(-1)
-                        # print("x shape:", x.shape)
-                        # print("======================================")
                         attn_scores = avg_mul_prefix_emb.bmm(
                             x).squeeze(-1) / self.temperature
-                        # print("x:", x.shape)
-                        # print("avg_mul_prefix_emb:", avg_mul_prefix_emb.shape)
-                        # print("attn score shape:", attn_scores.shape)
-                        # print("======================================")
 
+                        # #1
+                        # x = self.attn_W_down(avg_inputs_embeds)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = self.layer_norm(x)
+                        # x = self.fc(x)
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+
+                        # #2
+                        # x = self.attn_W_down(avg_inputs_embeds)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = self.fc(x)
+                        # x = self.layer_norm(x)
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+
+                        # #3
+                        # x = self.attn_W_down(avg_inputs_embeds)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = self.layer_norm(x)
+                        # x = self.dropout(self.fc(x))
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+
+
+                        # #4
+                        # x = self.attn_W_down(avg_inputs_embeds)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = self.dropout(self.fc(x))
+                        # x = self.layer_norm(x)
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+
+                        # # 1.1
+                        # # print("=============================================================")
+                        # # print(avg_inputs_embeds.shape)
+                        # # print("=============================================================")
+                        # x = avg_inputs_embeds.unsqueeze(-1)
+                        # x = self.attn_W_down(x)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = x.squeeze()
+                        # x = self.layer_norm(x)
+                        # x = self.fc(x)
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+
+                        # #2.1
+                        # x = avg_inputs_embeds.unsqueeze(-1)
+                        # x = self.attn_W_down(x)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = x.squeeze()
+                        # x = self.fc(x)
+                        # x = self.layer_norm(x)
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+                        
+                        # #3
+                        # x = avg_inputs_embeds.unsqueeze(-1)
+                        # x = self.attn_W_down(x)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = x.squeeze()
+                        # x = self.layer_norm(x)
+                        # x = self.dropout(self.fc(x))
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+
+                        # #4
+                        # x = avg_inputs_embeds.unsqueeze(-1)
+                        # x = self.attn_W_down(x)
+                        # x = self.attn_non_linear(x)
+                        # x = self.attn_W_up(x)
+                        # x = x.squeeze()
+                        # x = self.dropout(self.fc(x))
+                        # x = self.layer_norm(x)
+                        # x = x.unsqueeze(-1)
+                        # attn_scores = avg_mul_prefix_emb.bmm(
+                        #     x).squeeze(-1) / self.temperature
+                        
                     # implement token level model
                     elif self.attn_method == "token":
                         x = self.attn_W_down(avg_inputs_embeds)
@@ -1170,6 +1329,22 @@ class T5Stack(T5PreTrainedModel):
                         attn_scores = torch.stack([torch.stack([sliced_wasserstein_distance(x_i, prefix_emb_added[j], seed=0, n_projections=1000) \
                                         for j in range(prefix_emb_added.shape[0])], dim=0) \
                            for i, x_i in enumerate(torch.unbind(x, dim=0), 0)], dim=0)
+                        attn_scores = attn_scores / self.temperature
+
+                    elif self.attn_method == "ebsw":
+                        L = 10
+                        f_type ='identity'
+                        copy = False
+                        eps = 0
+                        x = self.attn_W_down(inputs_embeds)
+                        x = self.attn_non_linear(x)
+                        x = self.attn_W_up(x)
+                        x = self.layer_norm(x)
+                        prefix_emb_added = torch.cat((self.mul_prefix_emb, self.prefix_emb.unsqueeze(0)), dim=0)
+                        attn_scores = torch.stack([torch.stack([ISEBSW(x_i, prefix_emb_added[j], L=1,T=L,f_type=f_type,eps=eps,copy=copy) \
+                                        for j in range(prefix_emb_added.shape[0])], dim=0) \
+                           for i, x_i in enumerate(torch.unbind(x, dim=0), 0)], dim=0)
+                        # attn_scores = attn_scores / self.temperature
 
                     elif self.attn_method == "constant":
                         # FIXME: more efficient implementation
@@ -1177,11 +1352,20 @@ class T5Stack(T5PreTrainedModel):
                             0), mul_prefix_emb_added.size(1)) / mul_prefix_emb_added.size(1)).cuda()
                     else:
                         raise NotImplementedError
+                    
+                    def top_k_values(row, k=5):
+                        values, indices = torch.topk(row, k)
+                        result = torch.zeros_like(row)
+                        result[indices] = values
+                        return result
 
-                    if self.attn_method == "sub" or self.attn_method == "constant" or self.attn_method == "sw":
+                    if self.attn_method == "sub" or self.attn_method == "constant" or self.attn_method == "sw" or self.attn_method == "ebsw":
                         normalized_attn_scores = F.softmax(attn_scores, -1)
+                        top_scores = torch.stack([top_k_values(row) for row in normalized_attn_scores])
                         soft_prompts = torch.einsum(
-                            'bp, bpld -> bld', normalized_attn_scores, mul_prefix_emb_added)
+                            'bp, bpld -> bld', top_scores, mul_prefix_emb_added)
+                        # soft_prompts = torch.einsum(
+                        #     'bp, bpld -> bld', normalized_attn_scores, mul_prefix_emb_added)
                     elif self.attn_method == "token":
                         normalized_attn_scores = F.softmax(attn_scores, 1)
                         soft_prompts = torch.einsum(
@@ -1832,11 +2016,18 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
             os.path.join(layer_norm_dir, "layer_norm_bias.pt"))
 
     def update_attention_weights_sub(self, attention):
-        assert len(attention) == 2
+        # assert len(attention) == 2
+        # assert "attn_W_down" in attention[0]
+        # assert "attn_W_up" in attention[1]
+        # self.encoder.attn_W_down.weight.data = torch.load(attention[0]).cuda()
+        # self.encoder.attn_W_up.weight.data = torch.load(attention[1]).cuda()
+        assert len(attention) == 3
         assert "attn_W_down" in attention[0]
         assert "attn_W_up" in attention[1]
+        assert "fc" in attention[2]
         self.encoder.attn_W_down.weight.data = torch.load(attention[0]).cuda()
         self.encoder.attn_W_up.weight.data = torch.load(attention[1]).cuda()
+        self.encoder.fc.weight.data = torch.load(attention[2]).cuda()
 
     def update_prefix_weights_single(self, prefix_embedding):
         self.prefix_shared.data = prefix_embedding

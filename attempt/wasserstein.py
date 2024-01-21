@@ -1,5 +1,23 @@
 import torch
 import torch.nn as nn
+import ot
+
+
+def ISEBSW(X, Y, L=1,T=10, p=2, f_type="poly",eps=0,copy=True, rho=2, device="cpu"):
+    wasserstein_distances = torch.stack([torch.pow(ot.sliced.sliced_wasserstein_distance(X, Y, n_projections=1), p) for _ in range(L*T)])
+    wasserstein_distances =  wasserstein_distances.view(L,T)
+    if(f_type=="exp"):
+        weights = torch.softmax(wasserstein_distances,dim=1)
+    elif(f_type=="identity"):
+        weights =  wasserstein_distances + eps
+        weights = weights / torch.sum(weights, dim=1, keepdim=True)
+    elif (f_type == "poly"):
+        weights = wasserstein_distances**rho + eps
+        weights = weights / torch.sum(weights, dim=1, keepdim=True)
+    if(copy):
+        weights = weights.detach()
+    sw = torch.sum(weights*wasserstein_distances,dim=1).mean()
+    return  torch.pow(sw,1./p)
 
 # Adapted from https://github.com/gpeyre/SinkhornAutoDiff
 class SinkhornDistance(nn.Module):

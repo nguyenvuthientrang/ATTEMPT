@@ -18,7 +18,7 @@
     "prefix_dim": 100,
     "max_source_length": 256,
     "learning_rate": 3e-1,
-    "output_dir": "outputs_sw/attempt_single_mrpc",
+    "output_dir": "outputs_sw_20_top5_seed/attempt_single_mrpc",
     "per_device_train_batch_size": 16,
     "per_device_eval_batch_size": 16,
     "split_validation_test": true,

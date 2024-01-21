@@ -113,7 +113,7 @@ def freeze_model_params(model, adapter_args, adapter_config):
                     if "prefix_shared" == n and adapter_config.ignore_target is False:
                         m.requires_grad = True
 
-            elif adapter_config.attn_method == "sub" or adapter_config.attn_method == "sw":
+            elif adapter_config.attn_method == "sub" or adapter_config.attn_method == "sw" or adapter_config.attn_method == "ebsw":
                 for n, m in model.named_parameters():
                     if "encoder.attn_W_down.weight" == n and adapter_config.fix_attention is False:
                         m.requires_grad = True
@@ -296,6 +296,10 @@ def save_prompts(model, output_dir, attn_prefix_tuning, shared_attn, num_target,
             attn_weights_params = param
             torch.save(attn_weights_params, os.path.join(
                 output_dir, "attn_W_up.pt"))
+        if attn_prefix_tuning is True and "encoder.fc.weight" == name:
+            attn_weights_params = param
+            torch.save(attn_weights_params, os.path.join(
+                output_dir, "fc.pt"))
         if attn_prefix_tuning is True and "encoder.layer_norm.weight" == name:
             attn_weights_params = param
             torch.save(attn_weights_params, os.path.join(

@@ -425,7 +425,8 @@ def main():
             print(checkpoint_dir)
             # load models here
             attention_paths = [os.path.join(checkpoint_dir, "attn_W_down.pt"), os.path.join(
-                checkpoint_dir, "attn_W_up.pt")]
+                checkpoint_dir, "attn_W_up.pt"), os.path.join(
+                checkpoint_dir, "fc.pt")]
             trainer.model.update_attention_weights_sub(attention_paths)
 
             if model_args.load_layer_norm is True and "layer_norm_bias.pt" in checkpoint_dir:
@@ -460,7 +461,7 @@ def main():
         for checkpoint_dir in glob.glob(os.path.join(training_args.output_dir, "checkpoint-*_prompt_only")):
             # load models here
             attention_paths = [os.path.join(checkpoint_dir, "attn_W_down.pt"), os.path.join(
-                checkpoint_dir, "attn_W_up.pt")]
+                checkpoint_dir, "attn_W_up.pt"), os.path.join(checkpoint_dir, "fc.pt")]
             trainer.model.update_attention_weights_sub(attention_paths)
             if model_args.load_layer_norm is True and "layer_norm_bias.pt" in checkpoint_dir:
                 trainer.model.update_layer_norm_weights(checkpoint_dir)
@@ -488,7 +489,7 @@ def main():
 
     # eval final model
     attention_paths = [os.path.join(training_args.output_dir, "attn_W_down.pt"), os.path.join(
-        training_args.output_dir, "attn_W_up.pt")]
+        training_args.output_dir, "attn_W_up.pt"), os.path.join(training_args.output_dir, "fc.pt")]
     trainer.model.update_attention_weights_sub(attention_paths)
 
     dev_metrics_all = {}

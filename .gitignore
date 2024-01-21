@@ -2,6 +2,7 @@
 outputs/
 outputs_sw/
 runs/
+logs/
 *.pt
 \#*#
 .idea

@@ -428,7 +428,7 @@ def main():
         all_parameters = set(model.parameters())
         attn_params = []
         for name, param in model.named_parameters():
-            if name == "encoder.attn_W_up" or name == "encoder.attn_W_down" or name == "encoder.layer_norm":
+            if name == "encoder.attn_W_up" or name == "encoder.attn_W_down" or name == "encoder.layer_norm" or name == "encoder.fc":
                 attn_params += list(param)
         attn_params = set(attn_params)
         non_attn_params = all_parameters - attn_params
@@ -541,7 +541,7 @@ def main():
         logger.info("*** Evaluate ***")
         if model_args.attn_prefix_tuning is True:
             attention_paths = [os.path.join(training_args.output_dir, "attn_W_down.pt"), os.path.join(
-                training_args.output_dir, "attn_W_up.pt")]
+                training_args.output_dir, "attn_W_up.pt"), os.path.join(training_args.output_dir, "fc.pt")]
             trainer.model.update_attention_weights_sub(attention_paths)
             if model_args.load_layer_norm is True and "layer_norm_bias.pt" in training_args.output_dir:
                 trainer.model.update_layer_norm_weights(
@@ -596,7 +596,7 @@ def main():
         for checkpoint_dir in glob.glob(os.path.join(training_args.output_dir, "checkpoint-*_prompt_only")):
             print(checkpoint_dir)
             attention_paths = [os.path.join(checkpoint_dir, "attn_W_down.pt"), os.path.join(
-                checkpoint_dir, "attn_W_up.pt")]
+                checkpoint_dir, "attn_W_up.pt"), os.path.join(training_args.output_dir, "fc.pt")]
             trainer.model.update_attention_weights_sub(attention_paths)
 
             if model_args.load_layer_norm is True and "layer_norm_bias.pt" in checkpoint_dir:
@@ -630,7 +630,7 @@ def main():
         for checkpoint_dir in glob.glob(os.path.join(training_args.output_dir, "checkpoint-*_prompt_only")):
             # load models here
             attention_paths = [os.path.join(checkpoint_dir, "attn_W_down.pt"), os.path.join(
-                checkpoint_dir, "attn_W_up.pt")]
+                checkpoint_dir, "attn_W_up.pt"), os.path.join(training_args.output_dir, "fc.pt")]
             trainer.model.update_attention_weights_sub(attention_paths)
             if model_args.load_layer_norm is True and "layer_norm_bias.pt" in checkpoint_dir:
                 trainer.model.update_layer_norm_weights(checkpoint_dir)
